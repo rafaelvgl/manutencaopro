@@ -399,6 +399,34 @@ const DB = {
     {id:'LN-008',area:'AR-008',nome:'Subestação / Geração'},
   ],
 
+  // Componentes (nível 5 da hierarquia: filho de um ativo/equipamento)
+  componentes: [
+    {id:'CP-001',ativo:'AT-001',tag:'CP-BOM-EXT-001-ROL-DE',nome:'Rolamento DE (Drive End)',tipo:'Rolamento',fabricante:'SKF',modelo:'6310 C3',serie:'—',criticidade:'A',status:'operando',desc:'Rolamento do lado de acionamento. Lubrificação com Mobilux EP2 a cada 500h.'},
+    {id:'CP-002',ativo:'AT-001',tag:'CP-BOM-EXT-001-ROL-LE',nome:'Rolamento LE (Load End)',tipo:'Rolamento',fabricante:'SKF',modelo:'6308 C3',serie:'—',criticidade:'A',status:'operando',desc:'Rolamento do lado livre. Lubrificação com Mobilux EP2 a cada 500h.'},
+    {id:'CP-003',ativo:'AT-001',tag:'CP-BOM-EXT-001-SELO',nome:'Selo Mecânico',tipo:'Vedação',fabricante:'John Crane',modelo:'Type 21',serie:'JC-2023-0041',criticidade:'A',status:'operando',desc:'Selo mecânico simples. Substituição a cada 3000h ou vazamento detectado.'},
+    {id:'CP-004',ativo:'AT-001',tag:'CP-BOM-EXT-001-ACOP',nome:'Acoplamento Elástico',tipo:'Acoplamento',fabricante:'Rexnord',modelo:'Omega 10',serie:'—',criticidade:'B',status:'operando',desc:'Acoplamento de elemento elástico. Inspeção do elemento a cada 1500h.'},
+    {id:'CP-005',ativo:'AT-003',tag:'CP-VEN-CAL-001-ROL-NDE',nome:'Rolamento NDE (Anti-Drive)',tipo:'Rolamento',fabricante:'SKF',modelo:'22322 C3',serie:'—',criticidade:'A',status:'operando',desc:'Rolamento no lado contrário à transmissão. Ruído anormal detectado 14/05/2025.'},
+    {id:'CP-006',ativo:'AT-003',tag:'CP-VEN-CAL-001-ROL-DE',nome:'Rolamento DE (Drive End)',tipo:'Rolamento',fabricante:'SKF',modelo:'22320 C3',serie:'—',criticidade:'A',status:'operando',desc:'Rolamento do lado de transmissão por correia.'},
+    {id:'CP-007',ativo:'AT-004',tag:'CP-VEN-CAL-002-EIXO',nome:'Eixo Principal',tipo:'Eixo',fabricante:'Oficina Própria',modelo:'EX-TLT-2022-0089',serie:'EX-TLT-2022-0089',criticidade:'A',status:'manutencao',desc:'Eixo com trinca axial — em substituição (OS-2025-0847).'},
+    {id:'CP-008',ativo:'AT-006',tag:'CP-CAL-001-VS01',nome:'Válvula de Segurança VS-01',tipo:'Válvula',fabricante:'Leser',modelo:'441 DN50',serie:'LS-2014-VS01',criticidade:'A',status:'operando',desc:'Válvula de segurança principal. Calibração anual NR-13.'},
+    {id:'CP-009',ativo:'AT-006',tag:'CP-CAL-001-VR03',nome:'Válvula de Retenção VR-03',tipo:'Válvula',fabricante:'Leser',modelo:'441 DN40',serie:'LS-2014-VR03',criticidade:'A',status:'atencao',desc:'Gotejamento leve detectado em abr/2025. Programada substituição na próxima preventiva.'},
+    {id:'CP-010',ativo:'AT-009',tag:'CP-COM-UTL-001-FILT-AR',nome:'Filtro de Ar de Entrada',tipo:'Filtro',fabricante:'Atlas Copco',modelo:'GA75-FAR',serie:'—',criticidade:'B',status:'operando',desc:'Substituição a cada 2000h ou indicação de diferencial de pressão.'},
+  ],
+
+  // Inspeções vinculadas a ativos (rotas de campo)
+  inspecoes_ativo: [
+    {id:'INS-AT-001',ativo_id:'AT-001',tipo:'Lubrificação',desc:'Lubrificação mensal — mancais e rolamentos',dt:'2025-05-02',exec:'André Lima',resultado:'Normal',obs:'Graxa Mobilux EP2 aplicada. Rolamentos sem folga excessiva.',status:'concluida'},
+    {id:'INS-AT-002',ativo_id:'AT-001',tipo:'Inspeção Visual',desc:'Verificação de selos e vazamentos',dt:'2025-04-10',exec:'Carlos Mendes',resultado:'Normal',obs:'Selos sem vazamento. Vibração medida: 2,8 mm/s (OK).',status:'concluida'},
+    {id:'INS-AT-003',ativo_id:'AT-003',tipo:'Análise de Vibração',desc:'Leitura com analisador portátil CSI 2140',dt:'2025-05-14',exec:'Carlos Mendes',resultado:'Anormal',obs:'Rolamento NDE: 12,4 mm/s (limite: 7,1 mm/s ISO 10816). OS corretiva aberta.',status:'concluida'},
+    {id:'INS-AT-004',ativo_id:'AT-003',tipo:'Inspeção Visual',desc:'Inspeção visual periódica',dt:'2025-01-10',exec:'André Lima',resultado:'Normal',obs:'Sem anomalias visuais. Temperatura carcaça: 42°C (OK).',status:'concluida'},
+    {id:'INS-AT-005',ativo_id:'AT-004',tipo:'Inspeção Visual',desc:'Inspeção visual — pré-parada emergencial',dt:'2025-05-08',exec:'Carlos Mendes',resultado:'Crítico',obs:'Trinca axial no eixo visualmente confirmada. Parada de emergência executada.',status:'concluida'},
+    {id:'INS-AT-006',ativo_id:'AT-006',tipo:'NR-13',desc:'Inspeção regulatória mensal NR-13',dt:'2025-04-28',exec:'Patrícia Nunes',resultado:'Normal c/ ressalva',obs:'OK geral. Válvula VR-03 com gotejamento leve no assento. Ver laudo.',status:'concluida'},
+    {id:'INS-AT-007',ativo_id:'AT-006',tipo:'NR-13',desc:'Inspeção regulatória mensal NR-13',dt:'2025-03-28',exec:'Patrícia Nunes',resultado:'Normal',obs:'Todos os itens dentro dos limites. Sem anomalias.',status:'concluida'},
+    {id:'INS-AT-008',ativo_id:'AT-010',tipo:'Teste Funcional',desc:'Teste mensal de partida e carga',dt:'2025-04-01',exec:'Jéssica Alves',resultado:'Normal',obs:'Tensão: 381V. Frequência: 59,9Hz. Partida em 8s. OK.',status:'concluida'},
+    {id:'INS-AT-009',ativo_id:'AT-010',tipo:'Teste Funcional',desc:'Teste mensal de partida e carga',dt:'2025-05-16',exec:'Jéssica Alves',resultado:null,obs:'',status:'pendente'},
+    {id:'INS-AT-010',ativo_id:'AT-001',tipo:'Lubrificação',desc:'Lubrificação mensal — mancais',dt:'2025-06-02',exec:'André Lima',resultado:null,obs:'',status:'pendente'},
+  ],
+
   ativos: [
     {
       id:'AT-001',tag:'BOM-EXT-001',nome:'Bomba de Embebição #1',
@@ -414,6 +442,12 @@ const DB = {
         {id:'C001',user:'Carlos Mendes',perfil:'supervisor',dt:'2025-03-10 09:15',txt:'Vibração leve detectada no mancal DE durante rota de inspeção. Nível ainda dentro do aceitável (3,5 mm/s). Monitorar na próxima rota quinzenal.',tipo:'observacao'},
         {id:'C002',user:'André Lima',perfil:'tecnico',dt:'2025-04-02 14:30',txt:'Lubrificação realizada conforme rota mensal. Graxa Mobilux EP2, quantidade conforme ficha técnica. Condição geral normal.',tipo:'manutencao'},
       ],
+      fotos:[
+        {id:'F001',nome:'Vista geral — BOM-EXT-001',emoji:'🔵',dt:'2025-04-10',user:'Carlos Mendes',desc:'Foto da bomba após manutenção preventiva. Condição geral boa.'},
+        {id:'F002',nome:'Detalhe selo mecânico',emoji:'🔵',dt:'2025-04-10',user:'Carlos Mendes',desc:'Sem vazamento detectado. Selo recém trocado.'},
+        {id:'F003',nome:'Leitura vibração mancal DE',emoji:'🔵',dt:'2025-03-10',user:'André Lima',desc:'Vibração 3,5 mm/s — dentro do limite ISO 10816 (Zona A).'},
+      ],
+      fotos:[],
       anexos:[
         {id:'ANX001',nome:'Manual Técnico KSB Meganorm.pdf',tipo:'pdf',tam:'2,4 MB',dt:'2019-08-01',user:'Bruno Torres'},
         {id:'ANX002',nome:'Datasheet Bomba BOM-EXT-001.pdf',tipo:'pdf',tam:'890 KB',dt:'2019-08-01',user:'Bruno Torres'},
@@ -438,6 +472,7 @@ const DB = {
       specs:{Potência:'37 kW',Rotação:'1480 rpm',Vazão:'120 m³/h',Altura:'28 mca',Fluido:'Caldo + água',Vedação:'Selo mecânico simples'},
       ultima_os:'2025-03-22',proxima_prev:'2025-06-15',
       comentarios:[],
+      fotos:[],
       anexos:[
         {id:'ANX004',nome:'Manual KSB Meganorm.pdf',tipo:'pdf',tam:'2,4 MB',dt:'2019-08-01',user:'Bruno Torres'},
       ],
@@ -459,6 +494,10 @@ const DB = {
       comentarios:[
         {id:'C003',user:'Carlos Mendes',perfil:'supervisor',dt:'2025-05-14 07:45',txt:'Ruído de impacto detectado pelo operador no turno da noite. OS corretiva aberta. Monitoramento manual a cada hora. Equipamento mantido em operação por falta de substituto.',tipo:'observacao'},
       ],
+      fotos:[
+        {id:'F004',nome:'Análise vibração NDE — 14/05/2025',emoji:'🟠',dt:'2025-05-14',user:'Carlos Mendes',desc:'Vibração 12,4 mm/s no rolamento NDE. Fora do limite. OS aberta.'},
+      ],
+      fotos:[],
       anexos:[
         {id:'ANX005',nome:'Curva de Desempenho FD-1800.pdf',tipo:'pdf',tam:'1,1 MB',dt:'2018-05-20',user:'Bruno Torres'},
         {id:'ANX006',nome:'Relatório Vibração Jan2025.pdf',tipo:'pdf',tam:'560 KB',dt:'2025-01-15',user:'Carlos Mendes'},
@@ -483,6 +522,12 @@ const DB = {
         {id:'C004',user:'André Lima',perfil:'tecnico',dt:'2025-05-09 14:15',txt:'Novo eixo confirmado no estoque — NS: EX-TLT-2022-0089. Previsão de instalação amanhã cedo. Materiais: eixo + chaveta + parafusos de acoplamento.',tipo:'manutencao'},
         {id:'C005',user:'Carlos Mendes',perfil:'supervisor',dt:'2025-05-08 09:30',txt:'⚠ URGENTE — Equipamento desligado com segurança após identificação de trinca axial por inspeção visual. OS emergencial aberta. Caldeira limitada a 80% de carga.',tipo:'urgente'},
       ],
+      fotos:[
+        {id:'F005',nome:'Trinca axial — eixo VEN-CAL-002 (vista 1)',emoji:'🔴',dt:'2025-05-08',user:'Carlos Mendes',desc:'Trinca axial visível na região central. Extensão est. 40% do diâmetro.'},
+        {id:'F006',nome:'Trinca axial — eixo VEN-CAL-002 (vista 2)',emoji:'🔴',dt:'2025-05-08',user:'Carlos Mendes',desc:'Vista lateral. Profundidade da trinca requer substituição.'},
+        {id:'F007',nome:'Eixo desmontado — detalhe',emoji:'🔴',dt:'2025-05-09',user:'André Lima',desc:'Eixo retirado do equipamento. Sem condição de reparo.'},
+      ],
+      fotos:[],
       anexos:[
         {id:'ANX007',nome:'Laudo Inspeção Visual — Eixo ID-2200.pdf',tipo:'pdf',tam:'450 KB',dt:'2025-05-08',user:'Carlos Mendes'},
         {id:'ANX008',nome:'Foto Trinca Eixo 01.jpg',tipo:'img',tam:'1,8 MB',dt:'2025-05-08',user:'Carlos Mendes'},
@@ -523,6 +568,11 @@ const DB = {
       comentarios:[
         {id:'C006',user:'Patrícia Nunes',perfil:'tecnico',dt:'2025-04-30 11:45',txt:'Inspeção NR-13 concluída. Válvula VR-03 com leve gotejamento no assento — incluída na próxima preventiva. Demais itens OK.',tipo:'observacao'},
       ],
+      fotos:[
+        {id:'F008',nome:'Válvula VR-03 — gotejamento',emoji:'🟠',dt:'2025-04-30',user:'Patrícia Nunes',desc:'Gotejamento leve detectado no assento da válvula VR-03. Não representa risco imediato.'},
+        {id:'F009',nome:'Vista geral caldeira CAL-001',emoji:'🔵',dt:'2025-04-28',user:'Patrícia Nunes',desc:'Visão geral da caldeira após inspeção NR-13. Condição geral satisfatória.'},
+      ],
+      fotos:[],
       anexos:[
         {id:'ANX010',nome:'Certificado NR-13 Abr/2025.pdf',tipo:'pdf',tam:'890 KB',dt:'2025-04-30',user:'Patrícia Nunes'},
         {id:'ANX011',nome:'Prontuário Caldeira CAL-001.pdf',tipo:'pdf',tam:'3,2 MB',dt:'2014-01-01',user:'Bruno Torres'},
@@ -626,6 +676,7 @@ const DB = {
         {id:'OC002',who:'André Lima',perfil:'tecnico',dt:'2025-05-09 14:15',txt:'Novo eixo no estoque — NS: EX-TLT-2022-0089. Instalação amanhã manhã. Materiais separados: eixo, chaveta e parafusos de acoplamento.'},
         {id:'OC003',who:'Marina Costa',perfil:'pcm',dt:'2025-05-09 16:00',txt:'Custos atualizados. Peças: R$ 4.800. HH previsto: +8h. Prazo revisado para 10/05.'},
       ],
+      fotos:[],
       anexos:[
         {nome:'Foto Trinca Eixo VEN-CAL-002.jpg',tipo:'img',tam:'2,1 MB',dt:'2025-05-08 09:15',who:'Carlos Mendes'},
         {nome:'PTW-2025-0847.pdf',tipo:'pdf',tam:'340 KB',dt:'2025-05-08 09:00',who:'Carlos Mendes'},
@@ -665,6 +716,7 @@ const DB = {
       comentarios:[
         {id:'OC004',who:'Marina Costa',perfil:'pcm',dt:'2025-05-07 10:00',txt:'OS programada conforme calendário PCM safra 2025. Materiais requisitados: rolamentos SKF 6310, selos mecânicos e graxa Mobilux EP2.'},
       ],
+      fotos:[],
       anexos:[
         {nome:'Plano PM-BOM-001.pdf',tipo:'pdf',tam:'560 KB',dt:'2025-05-07',who:'Marina Costa'},
       ],
@@ -698,6 +750,7 @@ const DB = {
       comentarios:[
         {id:'OC005',who:'Patrícia Nunes',perfil:'tecnico',dt:'2025-04-30 11:45',txt:'Inspeção concluída. Válvula VR-03 com leve gotejamento no assento. Não representa risco imediato mas deve ser verificada na próxima preventiva.'},
       ],
+      fotos:[],
       anexos:[
         {nome:'Formulário NR-13 Abr/2025.pdf',tipo:'pdf',tam:'320 KB',dt:'2025-04-30',who:'Patrícia Nunes'},
         {nome:'Foto Válvula VR-03.jpg',tipo:'img',tam:'1,2 MB',dt:'2025-04-30',who:'Patrícia Nunes'},
@@ -733,6 +786,7 @@ const DB = {
       comentarios:[
         {id:'OC006',who:'André Lima',perfil:'tecnico',dt:'2025-05-11 16:00',txt:'Serviço concluído. Nova tela instalada. Equipamento testado — qualidade OK. Liberado para operação.'},
       ],
+      fotos:[],
       anexos:[
         {nome:'NF Tela Filtrante SS304.pdf',tipo:'pdf',tam:'220 KB',dt:'2025-05-12',who:'Marina Costa'},
       ],
@@ -766,6 +820,7 @@ const DB = {
         {txt:'Teste em vazio e com carga',done:false,who:null,dt:null},
       ],
       comentarios:[],
+      fotos:[],
       anexos:[{nome:'Plano Entressafra 2025 — Moendas.pdf',tipo:'pdf',tam:'1,8 MB',dt:'2025-05-01',who:'Marina Costa'}],
       historico:[
         {dt:'2025-05-01 09:00',tipo:'Abertura',desc:'OS planejada para entressafra',who:'Marina Costa'},
@@ -820,6 +875,7 @@ const DB = {
       comentarios:[
         {id:'OC007',who:'Carlos Mendes',perfil:'supervisor',dt:'2025-05-14 07:45',txt:'Equipamento em operação por não haver reserva. Monitoramento manual a cada hora pelo operador. Criticidade Alta — não temos outra caldeira disponível.'},
       ],
+      fotos:[],
       anexos:[],
       historico:[
         {dt:'2025-05-14 07:45',tipo:'Abertura',desc:'OS corretiva aberta',who:'Carlos Mendes'},
@@ -858,6 +914,7 @@ const STATUS_AT = {
   manutencao: {cls:'b-danger', txt:'Em Manutenção'},
   parado:     {cls:'b-warning',txt:'Parado'},
   standby:    {cls:'b-info',   txt:'Standby'},
+  atencao:    {cls:'b-warning',txt:'Atenção'},
   obsoleto:   {cls:'b-gray',   txt:'Obsoleto'},
 };
 
@@ -1724,22 +1781,77 @@ function pgAtivos() {
 
 function buildTree() {
   const emp = DB.empresa;
-  let html = `<div class="tnode" onclick="filterAtivoArea('')"><span class="tn-ic">🏢</span><span class="tn-label" style="font-weight:600">${emp.nome}</span><span class="tn-count">${DB.ativos.length}</span></div>`;
+  let html = `<div class="tnode" onclick="filterAtivoArea('')"><span class="tn-ic">🏢</span><span class="tn-label" style="font-weight:600;font-size:12px">${emp.nome}</span><span class="tn-count">${DB.ativos.length}</span></div>`;
   DB.plantas.filter(p=>p.empresa==='EMP-001').forEach(pl=>{
-    const nAt = DB.ativos.filter(a=>a.planta===pl.id).length;
-    html += `<div class="ti1"><div class="tnode" onclick="filterAtivoArea('')"><span class="tn-ic">🏭</span><span class="tn-label" style="font-weight:500">${pl.nome}</span><span class="tn-count">${nAt}</span></div>`;
+    const nPl = DB.ativos.filter(a=>a.planta===pl.id).length;
+    html += `<div class="ti1"><div class="tnode" onclick="filterAtivoArea('')"><span class="tn-ic">🏭</span><span class="tn-label" style="font-weight:500;font-size:12px">${pl.nome}</span><span class="tn-count">${nPl}</span></div>`;
     DB.areas.filter(a=>a.planta===pl.id).forEach(ar=>{
-      const nAr = DB.ativos.filter(a=>a.area===ar.id).length;
-      html += `<div class="ti2"><div class="tnode" id="tree-ar-${ar.id}" onclick="filterAtivoArea('${ar.id}')"><span class="tn-ic">📍</span><span class="tn-label">${ar.nome}</span><span class="tn-count">${nAr}</span></div>`;
-      DB.linhas.filter(l=>l.area===ar.id).forEach(ln=>{
-        const nLn = DB.ativos.filter(a=>a.linha===ln.id).length;
-        if(nLn>0) html += `<div class="ti3"><div class="tnode" onclick="filterAtivoLinha('${ar.id}','${ln.id}')"><span class="tn-ic">⚙</span><span class="tn-label" style="font-size:12px">${ln.nome}</span><span class="tn-count">${nLn}</span></div></div>`;
+      const nAr = DB.ativos.filter(x=>x.area===ar.id).length;
+      const arId = ar.id;
+      html += `<div class="ti2"><div class="tnode" id="tree-ar-${arId}" onclick="filterAtivoArea('${arId}')"><span class="tn-ic">📍</span><span class="tn-label" style="font-size:12px">${ar.nome}</span><span class="tn-count">${nAr}</span></div>`;
+      DB.linhas.filter(l=>l.area===arId).forEach(ln=>{
+        const atsLn = DB.ativos.filter(a=>a.linha===ln.id);
+        if(!atsLn.length) return;
+        html += `<div class="ti3"><div class="tnode" onclick="filterAtivoLinha('${arId}','${ln.id}')"><span class="tn-ic">⚙</span><span class="tn-label" style="font-size:11px">${ln.nome}</span><span class="tn-count">${atsLn.length}</span></div>`;
+        // Nível 5: Equipamentos
+        atsLn.forEach(at=>{
+          const comps = DB.componentes.filter(c=>c.ativo===at.id);
+          const atSt = at.status==='manutencao'||at.status==='parado' ? '🔴' : at.status==='standby'?'🔵':'🟢';
+          html += `<div style="padding-left:28px">
+            <div class="tnode" onclick="nav('ativo_detail','${at.id}')" style="border-left:2px solid var(--border2);margin-left:4px">
+              <span style="font-size:9px">${atSt}</span>
+              <span class="tn-label" style="font-size:11px;color:var(--text)">${at.tag}</span>
+              ${comps.length?`<span class="tn-count">${comps.length}cmp</span>`:''}
+            </div>`;
+          // Nível 6: Componentes
+          comps.forEach(cp=>{
+            const cpSt = cp.status==='manutencao'?'🔴':cp.status==='atencao'?'🟠':'🟢';
+            html += `<div style="padding-left:12px;border-left:1px dashed var(--border);margin-left:12px">
+              <div class="tnode" style="padding:3px 6px" onclick="event.stopPropagation();showCompDetail('${cp.id}')">
+                <span style="font-size:9px">${cpSt}</span>
+                <span style="font-size:10px;color:var(--text3);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${cp.nome}</span>
+              </div>
+            </div>`;
+          });
+          html += '</div>'; // equipamento
+        });
+        html += '</div>'; // linha
       });
-      html += '</div>';
+      html += '</div>'; // area
     });
-    html += '</div>';
+    html += '</div>'; // planta
   });
   return html;
+}
+
+function showCompDetail(cpId) {
+  const cp = DB.componentes.find(c=>c.id===cpId); if(!cp) return;
+  const at = DB.ativos.find(a=>a.id===cp.ativo)||{tag:'—',nome:'—'};
+  const stLbl = {operando:'<span class="badge b-success">Operando</span>',manutencao:'<span class="badge b-danger">Em Manutenção</span>',atencao:'<span class="badge b-warning">Atenção</span>'}[cp.status]||'<span class="badge b-gray">—</span>';
+  showModal(`Componente — ${cp.tag}`, `
+    <div style="margin-bottom:14px;display:flex;align-items:center;gap:10px;background:var(--bg3);padding:11px;border-radius:var(--r)">
+      <span style="font-size:22px">🔩</span>
+      <div>
+        <div style="font-size:13px;font-weight:600">${cp.nome}</div>
+        <div style="font-size:11px;color:var(--text3)">${cp.tag} · ${at.tag} — ${at.nome}</div>
+      </div>
+      <div style="margin-left:auto">${stLbl}</div>
+    </div>
+    <div class="dg" style="margin-bottom:12px">
+      <div class="di"><div class="di-label">Tipo</div><div class="di-val">${cp.tipo}</div></div>
+      <div class="di"><div class="di-label">Criticidade</div><div class="di-val">${bCrit(cp.criticidade)}</div></div>
+      <div class="di"><div class="di-label">Fabricante</div><div class="di-val">${cp.fabricante}</div></div>
+      <div class="di"><div class="di-label">Modelo</div><div class="di-val">${cp.modelo}</div></div>
+      <div class="di" style="grid-column:1/-1"><div class="di-label">Número de Série</div><div class="di-val" style="font-family:var(--mono)">${cp.serie||'—'}</div></div>
+    </div>
+    <div class="di"><div class="di-label">Descrição Técnica</div><div style="font-size:13px;color:var(--text2);line-height:1.6;margin-top:4px">${cp.desc}</div></div>
+    <div style="margin-top:12px;display:flex;gap:8px">
+      <button class="btn btn-ghost btn-sm" onclick="closeModal();nav('ativo_detail','${at.id}')">Ver Ativo →</button>
+    </div>
+  `, null);
+  // Troca o botão confirmar por fechar
+  const mfoot = document.querySelector('#gen-modal .mfoot');
+  if(mfoot) mfoot.innerHTML = `<button class="btn btn-ghost" onclick="closeModal()">Fechar</button>`;
 }
 
 function filterAtivoArea(areaId) {
@@ -1790,6 +1902,8 @@ function pgAtivoDetail(id) {
   const ln = DB.linhas.find(l=>l.id===a.linha)||{nome:'—'};
   const osAtivo = DB.ordens.filter(o=>o.ativo_id===id);
   const osAbertos = osAtivo.filter(o=>o.status!=='Concluída'&&o.status!=='Cancelada').length;
+  const insAtivo = DB.inspecoes_ativo.filter(i=>i.ativo_id===id);
+  const compsAtivo = DB.componentes.filter(c=>c.ativo===id);
 
   setTB(a.tag, `
     <button class="btn btn-ghost btn-sm" onclick="modalEditAtivo('${id}')">✏ Editar</button>
@@ -1827,7 +1941,9 @@ function pgAtivoDetail(id) {
 
 <div class="tabs-bar">
   <div class="tab on" onclick="switchTab(this,'at-info')">Dados Gerais</div>
-  <div class="tab" onclick="switchTab(this,'at-os')">Ordens de Serviço <small style="color:var(--text3)">(${osAtivo.length})</small></div>
+  <div class="tab" onclick="switchTab(this,'at-os')">OS <small style="color:var(--text3)">(${osAtivo.length})</small></div>
+  <div class="tab" onclick="switchTab(this,'at-ins')">Inspeções <small style="color:var(--text3)">(${insAtivo.length})</small></div>
+  <div class="tab" onclick="switchTab(this,'at-fotos')">Fotos <small style="color:var(--text3)">(${a.fotos?a.fotos.length:0})</small></div>
   <div class="tab" onclick="switchTab(this,'at-hist')">Histórico</div>
   <div class="tab" onclick="switchTab(this,'at-anx')">Anexos <small style="color:var(--text3)">(${a.anexos.length})</small></div>
   <div class="tab" onclick="switchTab(this,'at-cm')">Comentários <small style="color:var(--text3)">(${a.comentarios.length})</small></div>
@@ -1891,6 +2007,24 @@ function pgAtivoDetail(id) {
         </div>
       </div>
     </div>
+    ${compsAtivo.length ? `<div class="card" style="margin-top:14px">
+      <div class="card-head"><span class="card-title">Componentes Cadastrados</span><span class="badge b-gray">${compsAtivo.length}</span></div>
+      <div>
+        ${compsAtivo.map(cp=>{
+          const stC={operando:'var(--success)',manutencao:'var(--danger)',atencao:'var(--warning)'}[cp.status]||'var(--text3)';
+          const stLbl={operando:'Operando',manutencao:'Manutenção',atencao:'Atenção'}[cp.status]||cp.status;
+          return `<div style="display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--border);cursor:pointer" onclick="showCompDetail('${cp.id}')">
+            <div style="width:8px;height:8px;border-radius:50%;background:${stC};flex-shrink:0"></div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:12px;font-weight:600">${cp.nome}</div>
+              <div style="font-size:10px;color:var(--text3)">${cp.tag} · ${cp.tipo} · ${cp.fabricante} ${cp.modelo}</div>
+            </div>
+            <span style="font-size:11px;color:${stC};font-weight:500;flex-shrink:0">${stLbl}</span>
+            ${bCrit(cp.criticidade)}
+          </div>`;
+        }).join('')}
+      </div>
+    </div>` : ''}
   </div>
 </div>
 </div>
@@ -1981,7 +2115,189 @@ function pgAtivoDetail(id) {
     }).join('')}</div>` : `<div class="empty"><div class="empty-ic">💬</div><div class="empty-t">Nenhum comentário técnico registrado</div></div>`}
   </div>
 </div>
+
+<!-- INSPEÇÕES -->
+<div data-tab="at-ins" style="display:none">
+<div class="card">
+  <div class="card-head">
+    <span class="card-title">Inspeções e Rotas de Campo</span>
+    <button class="btn btn-ghost btn-sm" onclick="addInspecaoAtivo('${id}')">+ Registrar Inspeção</button>
+  </div>
+  <div class="tw"><table>
+    <thead><tr><th>ID</th><th>Tipo</th><th>Descrição</th><th>Data</th><th>Executor</th><th>Resultado</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    ${insAtivo.length ? insAtivo.map(ins => {
+      const resCor = {Normal:'var(--success)','Normal c/ ressalva':'var(--warning)',Anormal:'var(--danger)',Crítico:'var(--danger)'}[ins.resultado]||'var(--text3)';
+      const stBdg = ins.status==='concluida'?'<span class="badge b-success">Concluída</span>':'<span class="badge b-warning">Pendente</span>';
+      return `<tr>
+        <td style="font-family:var(--mono);font-size:11px;color:var(--accent)">${ins.id}</td>
+        <td style="font-size:12px"><span class="badge b-info">${ins.tipo}</span></td>
+        <td style="font-size:12px;font-weight:500">${ins.desc}</td>
+        <td style="font-family:var(--mono);font-size:11px">${fd(ins.dt)}</td>
+        <td style="font-size:12px">${ins.exec}</td>
+        <td style="font-size:12px;color:${resCor};font-weight:${ins.resultado==='Normal'?400:600}">${ins.resultado||'—'}</td>
+        <td>${stBdg}</td>
+        <td><button class="btn btn-ghost btn-xs" onclick="showInspDetail('${ins.id}')">Ver</button></td>
+      </tr>`;
+    }).join('') : `<tr><td colspan="8"><div class="empty"><div class="empty-ic">🔍</div><div class="empty-t">Nenhuma inspeção registrada para este ativo</div></div></td></tr>`}
+    </tbody>
+  </table></div>
+</div>
+${insAtivo.some(i=>i.obs) ? `<div class="card" style="margin-top:14px">
+  <div class="card-head"><span class="card-title">Últimas Observações de Campo</span></div>
+  <div class="card-body">
+    <div class="tl">
+    ${insAtivo.filter(i=>i.obs&&i.status==='concluida').map(i=>{
+      const resCor = {Normal:'var(--success)','Normal c/ ressalva':'var(--warning)',Anormal:'var(--danger)',Crítico:'var(--danger)'}[i.resultado]||'var(--text3)';
+      return `<div class="tl-item">
+        <div class="tl-dot" style="background:${resCor};border:2px solid ${resCor}"></div>
+        <div class="tl-body">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+            <span class="badge b-info" style="font-size:10px">${i.tipo}</span>
+            <span style="font-size:11px;color:var(--text3)">${fd(i.dt)} · ${i.exec}</span>
+            <span style="margin-left:auto;font-size:11px;font-weight:600;color:${resCor}">${i.resultado}</span>
+          </div>
+          <div style="font-size:13px;color:var(--text2);line-height:1.5">${i.obs}</div>
+        </div>
+      </div>`;
+    }).join('')}
+    </div>
+  </div>
+</div>` : ''}
+</div>
+
+<!-- FOTOS -->
+<div data-tab="at-fotos" style="display:none">
+<div class="card">
+  <div class="card-head">
+    <span class="card-title">Galeria de Fotos</span>
+    <button class="btn btn-ghost btn-sm" onclick="addFotoAtivo('${id}')">+ Adicionar Foto</button>
+  </div>
+  <div class="card-body" id="at-fotos-body-${id}">
+  ${(a.fotos&&a.fotos.length) ? `
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px">
+      ${a.fotos.map(f=>`
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden;cursor:pointer" onclick="showFotoDetail('${f.id}','${id}')">
+        <div style="height:120px;background:var(--bg4);display:flex;align-items:center;justify-content:center;position:relative">
+          <span style="font-size:40px">${f.emoji||'📷'}</span>
+          <div style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,.6);border-radius:4px;padding:2px 6px;font-size:10px;color:#fff">${f.dt}</div>
+        </div>
+        <div style="padding:10px 12px">
+          <div style="font-size:12px;font-weight:600;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${f.nome}</div>
+          <div style="font-size:10px;color:var(--text3)">${f.user}</div>
+          ${f.desc?`<div style="font-size:11px;color:var(--text2);margin-top:5px;line-height:1.4">${f.desc}</div>`:''}
+        </div>
+      </div>`).join('')}
+    </div>` : `<div class="empty"><div class="empty-ic">📷</div><div class="empty-t">Nenhuma foto cadastrada</div><div style="font-size:12px;color:var(--text3);margin-top:4px">Adicione fotos do equipamento, defeitos, manutenções e evidências</div></div>`}
+  </div>
+</div>
+</div>
+
 </div>`);
+}
+
+function showInspDetail(insId) {
+  const ins = DB.inspecoes_ativo.find(i=>i.id===insId); if(!ins) return;
+  const at = DB.ativos.find(a=>a.id===ins.ativo_id)||{tag:'—',nome:'—'};
+  const resCor = {Normal:'var(--success)','Normal c/ ressalva':'var(--warning)',Anormal:'var(--danger)',Crítico:'var(--danger)'}[ins.resultado]||'var(--text3)';
+  showModal(`Inspeção — ${ins.id}`, `
+    <div style="background:var(--bg3);border-radius:var(--r);padding:12px;margin-bottom:16px;display:flex;align-items:center;gap:10px">
+      <span style="font-size:22px">🔍</span>
+      <div><div style="font-size:13px;font-weight:600">${ins.desc}</div><div style="font-size:11px;color:var(--text3)">${at.tag} — ${at.nome} · ${fd(ins.dt)}</div></div>
+      ${ins.resultado?`<div style="margin-left:auto;font-size:13px;font-weight:700;color:${resCor}">${ins.resultado}</div>`:''}
+    </div>
+    <div class="dg" style="margin-bottom:12px">
+      <div class="di"><div class="di-label">Tipo</div><div class="di-val">${ins.tipo}</div></div>
+      <div class="di"><div class="di-label">Data</div><div class="di-val" style="font-family:var(--mono)">${fd(ins.dt)}</div></div>
+      <div class="di"><div class="di-label">Executor</div><div class="di-val">${ins.exec}</div></div>
+      <div class="di"><div class="di-label">Status</div><div class="di-val">${ins.status==='concluida'?'<span class="badge b-success">Concluída</span>':'<span class="badge b-warning">Pendente</span>'}</div></div>
+    </div>
+    ${ins.obs?`<div class="di"><div class="di-label">Observações de Campo</div><div style="font-size:13px;color:var(--text2);line-height:1.6;margin-top:4px">${ins.obs}</div></div>`:''}
+  `, null);
+  const mfoot = document.querySelector('#gen-modal .mfoot');
+  if(mfoot) mfoot.innerHTML = `<button class="btn btn-ghost" onclick="closeModal()">Fechar</button>`;
+}
+
+function addInspecaoAtivo(ativoId) {
+  showModal('Registrar Inspeção', `
+    <div class="fg">
+      <div class="fl"><label>Tipo de Inspeção</label>
+        <select class="fi" id="ni-tipo"><option>Inspeção Visual</option><option>Lubrificação</option><option>Análise de Vibração</option><option>Termografia</option><option>NR-13</option><option>Teste Funcional</option><option>Ultrassom</option></select>
+      </div>
+      <div class="fl"><label>Data</label><input class="fi" type="date" id="ni-dt" value="${new Date().toISOString().split('T')[0]}"></div>
+      <div class="fc fl"><label>Descrição</label><input class="fi" id="ni-desc" placeholder="Descreva o objetivo da inspeção…"></div>
+      <div class="fl"><label>Executor</label>
+        <select class="fi" id="ni-exec">${DB.users.filter(u=>u.perfil==='tecnico'||u.perfil==='supervisor').map(u=>`<option>${u.nome}</option>`).join('')}</select>
+      </div>
+      <div class="fl"><label>Resultado</label>
+        <select class="fi" id="ni-res"><option>Normal</option><option>Normal c/ ressalva</option><option>Anormal</option><option>Crítico</option></select>
+      </div>
+      <div class="fc fl"><label>Observações de Campo</label><textarea class="fi" id="ni-obs" rows="3" placeholder="Registre as condições encontradas, medições e observações relevantes…"></textarea></div>
+    </div>`,
+  ()=>{
+    const desc = document.getElementById('ni-desc').value.trim();
+    if(!desc) { alert('Informe a descrição.'); return false; }
+    DB.inspecoes_ativo.push({
+      id:'INS-AT-'+String(DB.inspecoes_ativo.length+1).padStart(3,'0'),
+      ativo_id:ativoId,
+      tipo:document.getElementById('ni-tipo').value,
+      desc,
+      dt:document.getElementById('ni-dt').value,
+      exec:document.getElementById('ni-exec').value,
+      resultado:document.getElementById('ni-res').value,
+      obs:document.getElementById('ni-obs').value.trim(),
+      status:'concluida'
+    });
+    const at = DB.ativos.find(a=>a.id===ativoId);
+    if(at) at.historico.unshift({dt:new Date().toISOString().split('T')[0],tipo:'Inspeção',desc:`${document.getElementById('ni-tipo').value} — ${desc}`,os:null,user:DB.currentUser.nome});
+    closeModal(); pgAtivoDetail(ativoId);
+    setTimeout(()=>{ const t=document.querySelector('.tabs-bar .tab:nth-child(3)'); if(t)switchTab(t,'at-ins'); },50);
+  });
+}
+
+function showFotoDetail(fotoId, ativoId) {
+  const at = DB.ativos.find(a=>a.id===ativoId); if(!at||!at.fotos) return;
+  const f = at.fotos.find(x=>x.id===fotoId); if(!f) return;
+  showModal(f.nome, `
+    <div style="background:var(--bg3);height:200px;border-radius:var(--r);display:flex;align-items:center;justify-content:center;margin-bottom:16px;position:relative">
+      <span style="font-size:64px">${f.emoji||'📷'}</span>
+      <div style="position:absolute;bottom:10px;right:10px;background:rgba(0,0,0,.7);padding:4px 10px;border-radius:4px;font-size:11px;color:#fff">${at.tag} · ${f.dt}</div>
+    </div>
+    <div class="dg" style="margin-bottom:10px">
+      <div class="di"><div class="di-label">Registrado por</div><div class="di-val">${f.user}</div></div>
+      <div class="di"><div class="di-label">Data</div><div class="di-val" style="font-family:var(--mono)">${fd(f.dt)}</div></div>
+    </div>
+    ${f.desc?`<div class="di"><div class="di-label">Descrição</div><div style="font-size:13px;color:var(--text2);line-height:1.5;margin-top:4px">${f.desc}</div></div>`:''}
+  `, null);
+  const mfoot = document.querySelector('#gen-modal .mfoot');
+  if(mfoot) mfoot.innerHTML = `<button class="btn btn-ghost" onclick="closeModal()">Fechar</button><button class="btn btn-primary" onclick="closeModal()" disabled style="opacity:.5">⬇ Download</button>`;
+}
+
+function addFotoAtivo(ativoId) {
+  showModal('Adicionar Foto', `
+    <div class="fl"><label>Nome / Título da Foto</label><input class="fi" id="nf-nome" placeholder="Ex: Detalhe rolamento DE após troca"></div>
+    <div class="fg">
+      <div class="fl"><label>Data</label><input class="fi" type="date" id="nf-dt" value="${new Date().toISOString().split('T')[0]}"></div>
+      <div class="fl"><label>Ícone de Referência</label>
+        <select class="fi" id="nf-emoji">
+          <option value="🔵">🔵 Normal / Informativo</option>
+          <option value="🟢">🟢 Boa Condição</option>
+          <option value="🟠">🟠 Atenção</option>
+          <option value="🔴">🔴 Defeito / Urgente</option>
+          <option value="📷">📷 Geral</option>
+        </select>
+      </div>
+    </div>
+    <div class="fl"><label>Descrição</label><textarea class="fi" id="nf-desc" rows="2" placeholder="Descreva o conteúdo da foto…"></textarea></div>`,
+  ()=>{
+    const nome = document.getElementById('nf-nome').value.trim();
+    if(!nome) { alert('Informe o título.'); return false; }
+    const at = DB.ativos.find(a=>a.id===ativoId);
+    if(!at.fotos) at.fotos = [];
+    at.fotos.push({id:genId(),nome,emoji:document.getElementById('nf-emoji').value,dt:document.getElementById('nf-dt').value,user:DB.currentUser.nome,desc:document.getElementById('nf-desc').value.trim()});
+    closeModal(); pgAtivoDetail(ativoId);
+    setTimeout(()=>{ const t=document.querySelector('.tabs-bar .tab:nth-child(4)'); if(t)switchTab(t,'at-fotos'); },50);
+  });
 }
 
 function addAnexoAtivo(ativoId) {
