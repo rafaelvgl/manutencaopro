@@ -453,9 +453,10 @@ async function loadDB() {
   ]);
 
   DB.empresa         = empresas[0] || null;
-  DB.plantas         = plantas  || [];
-  DB.areas           = areas    || [];
-  DB.linhas          = linhas   || [];
+  // Normaliza hierarquia — adiciona campos curtos compatíveis com o código
+  DB.plantas         = (plantas||[]).map(p => ({...p, empresa:p.empresa_id}));
+  DB.areas           = (areas||[]).map(a => ({...a, planta:a.planta_id, cod:a.codigo||''}));
+  DB.linhas          = (linhas||[]).map(l => ({...l, area:l.area_id}));
   DB.usuarios        = normalizeUsuarios(usuarios || []);
   DB.ativos          = normalizeAtivos(ativos || []);
   DB.componentes     = componentes || [];
@@ -463,8 +464,13 @@ async function loadDB() {
   DB.inspecoes_ativo = inspecoes || [];
   DB.loaded          = true;
 
-  // Se banco sem dados, usa demo
-  if (!DB.areas.length && !DB.ativos.length) usarDadosDemo();
+  // Só usa demo se não houver NENHUMA estrutura hierárquica
+  if (!DB.areas.length) {
+    console.warn('Sem áreas no banco — usando dados demo');
+    usarDadosDemo();
+  } else {
+    console.log(`Supabase OK: ${DB.areas.length} áreas, ${DB.ativos.length} ativos, ${DB.ordens.length} OS`);
+  }
   return true;
 }
 
@@ -533,7 +539,7 @@ var uNome = id => (DB.usuarios.find(u=>u.id===id)||{nome:'—'}).nome;
 var uAv   = id => (DB.usuarios.find(u=>u.id===id)||{av:'?'}).av || '?';
 var arNome = id => (DB.areas.find(a=>a.id===id)||{nome:'—'}).nome;
 var lnNome = id => (DB.linhas.find(l=>l.id===id)||{nome:'—'}).nome;
-var plNome = id => (DB.plantas.find(p=>p.id===id)||{nome:'—'}).nome;
+var plNome = id => (DB.plantas.find(p=>p.id===id)||DB.plantas.find(p=>p.planta_id===id)||{nome:'—'}).nome;
 var atTag  = id => { const a=DB.ativos.find(x=>x.id===id); return a?`${a.tag} — ${a.nome}`:'—'; };
 var fd     = d => { if(!d)return '—'; const p=d.split('-'); return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:d; };
 var nowStr = () => new Date().toLocaleString('pt-BR',{hour12:false});
@@ -985,7 +991,7 @@ var uNome  = id => (DB.users.find(u=>u.id===id)||{nome:'—'}).nome;
 var uAv    = id => (DB.users.find(u=>u.id===id)||{av:'?'}).av;
 var arNome = id => (DB.areas.find(a=>a.id===id)||{nome:'—'}).nome;
 var lnNome = id => (DB.linhas.find(l=>l.id===id)||{nome:'—'}).nome;
-var plNome = id => (DB.plantas.find(p=>p.id===id)||{nome:'—'}).nome;
+var plNome = id => (DB.plantas.find(p=>p.id===id)||DB.plantas.find(p=>p.planta_id===id)||{nome:'—'}).nome;
 var atTag  = id => { const a=DB.ativos.find(x=>x.id===id); return a?`${a.tag} — ${a.nome}`:'—'; };
 var fd     = d => { if(!d)return '—'; const p=d.split('-'); return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:d; };
 var nowStr = () => new Date().toLocaleString('pt-BR',{hour12:false});
@@ -1035,15 +1041,17 @@ function doLogin() {
         document.getElementById('u-av').textContent = uReal.av||'?';
       }
       updateBadge();
-      showToast('✓ Dados carregados do Supabase', 'success', 2500);
-      // Recarrega tela atual com dados reais
+      if(DB.areas.length) {
+        showToast('✓ Banco de dados conectado — ' + DB.areas.length + ' áreas carregadas', 'success', 3000);
+      }
+      // Recarrega tela atual com dados reais do Supabase
       nav(_page, _detail, _sub);
     }).catch(e => {
       console.warn('Supabase background load falhou:', e);
-      showToast('Supabase offline — usando dados demo', 'warning', 3000);
+      showToast('⚠ Supabase indisponível — usando dados demo', 'warning', 4000);
     });
     try { iniciarRealtime(); } catch(e) {}
-  }, 100);
+  }, 200);
 }
 function logout() {
   document.getElementById('app').style.display = 'none';
@@ -1884,8 +1892,8 @@ function buildTree() {
     </div>
     <div class="tree-children" id="ch-empresa">`;
 
-  DB.plantas.filter(p=>p.empresa==='EMP-001').forEach(pl=>{
-    const nPl = DB.ativos.filter(a=>a.planta===pl.id).length;
+  DB.plantas.filter(p=>p.empresa_id===DB.empresa?.id||p.empresa===DB.empresa?.id||DB.plantas.length>0).forEach(pl=>{
+    const nPl = DB.ativos.filter(a=>(a.planta_id||a.planta)===pl.id).length;
     const plKey = 'pl-'+pl.id;
 
     html += `
@@ -1898,8 +1906,8 @@ function buildTree() {
         </div>
         <div class="tree-children" id="ch-${plKey}">`;
 
-    DB.areas.filter(a=>a.planta===pl.id).forEach(ar=>{
-      const nAr = DB.ativos.filter(x=>x.area===ar.id).length;
+    DB.areas.filter(a=>(a.planta_id||a.planta)===pl.id).forEach(ar=>{
+      const nAr = DB.ativos.filter(x=>(x.area_id||x.area)===ar.id).length;
       if(!nAr) return;
       const arKey = 'ar-'+ar.id;
 
@@ -1913,8 +1921,8 @@ function buildTree() {
             </div>
             <div class="tree-children" id="ch-${arKey}" style="display:none">`;
 
-      DB.linhas.filter(l=>l.area===ar.id).forEach(ln=>{
-        const atsLn = DB.ativos.filter(a=>a.linha===ln.id);
+      DB.linhas.filter(l=>(l.area_id||l.area)===ar.id).forEach(ln=>{
+        const atsLn = DB.ativos.filter(a=>(a.linha_id||a.linha)===ln.id);
         if(!atsLn.length) return;
         const lnKey = 'ln-'+ln.id;
 
@@ -2052,7 +2060,7 @@ function filterAtivoLinha(areaId, linhaId) {
   _atFiltroArea = areaId;
   document.querySelectorAll('[id^="tree-ar-"]').forEach(el=>el.classList.remove('selected'));
   const el=document.getElementById(`tree-ar-${areaId}`); if(el) el.classList.add('selected');
-  DB.ativos.forEach(a=>{ const r=document.getElementById(`atr-${a.id}`); if(r) r.style.display=(a.linha===linhaId?'':'none'); });
+  DB.ativos.forEach(a=>{ const r=document.getElementById(`atr-${a.id}`); if(r) r.style.display=((a.linha_id||a.linha)===linhaId?'':'none'); });
 }
 function filterAtivos() {
   const q  = (document.getElementById('at-q')||{value:''}).value.toLowerCase();
@@ -2060,7 +2068,7 @@ function filterAtivos() {
   const fc = (document.getElementById('at-fcrit')||{value:''}).value;
   DB.ativos.forEach(a=>{
     const r=document.getElementById(`atr-${a.id}`); if(!r) return;
-    const ok = (!_atFiltroArea||a.area===_atFiltroArea)
+    const ok = (!_atFiltroArea||(a.area_id||a.area)===_atFiltroArea)
       && (!q||a.tag.toLowerCase().includes(q)||a.nome.toLowerCase().includes(q)||a.fabricante.toLowerCase().includes(q)||a.modelo.toLowerCase().includes(q))
       && (!fs||a.status===fs) && (!fc||a.criticidade===fc);
     r.style.display = ok?'':'none';
@@ -2085,9 +2093,9 @@ function atRow(a) {
 // ════════════════════════════════════════════════════
 function pgAtivoDetail(id) {
   const a = DB.ativos.find(x=>x.id===id); if(!a) { nav('ativos'); return; }
-  const pl = DB.plantas.find(p=>p.id===a.planta)||{nome:'—'};
-  const ar = DB.areas.find(x=>x.id===a.area)||{nome:'—'};
-  const ln = DB.linhas.find(l=>l.id===a.linha)||{nome:'—'};
+  const pl = DB.plantas.find(p=>p.id===(a.planta_id||a.planta))||{nome:'—'};
+  const ar = DB.areas.find(x=>x.id===(a.area_id||a.area))||{nome:'—'};
+  const ln = DB.linhas.find(l=>l.id===(a.linha_id||a.linha))||{nome:'—'};
   const osAtivo = DB.ordens.filter(o=>o.ativo_id===id);
   const osAbertos = osAtivo.filter(o=>o.status!=='Concluída'&&o.status!=='Cancelada').length;
   const insAtivo = DB.inspecoes_ativo.filter(i=>i.ativo_id===id);
@@ -2525,7 +2533,7 @@ async function modalNovoAtivo() {
       <div class="fl"><label>Modelo</label><input class="fi" id="na-mod" placeholder="Ex: Meganorm 65-200"></div>
       <div class="fl"><label>Número de Série</label><input class="fi" id="na-serie" placeholder="Ex: KSB-2024-0099"></div>
       <div class="fl"><label>Área</label>
-        <select class="fi" id="na-area">${DB.areas.filter(a=>a.planta==='PL-001').map(a=>`<option value="${a.id}">${a.nome}</option>`).join('')}</select>
+        <select class="fi" id="na-area">${DB.areas.map(a=>`<option value="${a.id}">${a.nome}</option>`).join('')}</select>
       </div>
       <div class="fl"><label>Criticidade</label>
         <select class="fi" id="na-crit"><option value="A">A — Crítico</option><option value="B">B — Importante</option><option value="C">C — Secundário</option></select>
@@ -2804,8 +2812,8 @@ function pgAdmin() {
         <td style="font-family:var(--mono);font-size:11px;color:var(--accent)">${p.id}</td>
         <td style="font-weight:500">${p.nome}</td>
         <td style="font-size:12px;color:var(--text2)">${p.cidade} / ${p.uf}</td>
-        <td style="font-size:12px">${DB.areas.filter(a=>a.planta===p.id).length}</td>
-        <td style="font-size:12px">${DB.ativos.filter(a=>a.planta===p.id).length}</td>
+        <td style="font-size:12px">${DB.areas.filter(a=>(a.planta_id||a.planta)===p.id).length}</td>
+        <td style="font-size:12px">${DB.ativos.filter(a=>(a.planta_id||a.planta)===p.id).length}</td>
         <td><button class="btn btn-ghost btn-xs" onclick="admEditPlanta('${p.id}')">✏</button>
             <button class="btn btn-ghost btn-xs" style="color:var(--danger)" onclick="admDelConfirm('planta','${p.id}','${p.nome}')">🗑</button></td>
       </tr>`).join('')}</tbody>
@@ -2824,8 +2832,8 @@ function pgAdmin() {
         <td style="font-weight:500">${a.nome}</td>
         <td style="font-family:var(--mono);font-size:11px">${a.cod}</td>
         <td style="font-size:12px;color:var(--text2)">${plNome(a.planta)}</td>
-        <td style="font-size:12px">${DB.linhas.filter(l=>l.area===a.id).length}</td>
-        <td style="font-size:12px">${DB.ativos.filter(at=>at.area===a.id).length}</td>
+        <td style="font-size:12px">${DB.linhas.filter(l=>(l.area_id||l.area)===a.id).length}</td>
+        <td style="font-size:12px">${DB.ativos.filter(at=>(at.area_id||at.area)===a.id).length}</td>
         <td><button class="btn btn-ghost btn-xs" onclick="admEditArea('${a.id}')">✏</button>
             <button class="btn btn-ghost btn-xs" style="color:var(--danger)" onclick="admDelConfirm('area','${a.id}','${a.nome}')">🗑</button></td>
       </tr>`).join('')}</tbody>
@@ -3174,12 +3182,12 @@ async function admDelConfirm(tipo, id, nome) {
   const labels = {planta:'Planta', area:'Área', linha:'Linha', comp:'Componente'};
   if(!confirm(`Excluir ${labels[tipo]||tipo} "${nome}"?\n\nEsta ação não pode ser desfeita.`)) return;
   if(tipo==='planta') {
-    const hasAt = DB.ativos.some(a=>a.planta===id);
+    const hasAt = DB.ativos.some(a=>(a.planta_id||a.planta)===id);
     if(hasAt) { alert('Não é possível excluir: existem ativos nesta planta.'); return; }
     DB.plantas = DB.plantas.filter(p=>p.id!==id);
     DB.areas   = DB.areas.filter(a=>a.planta!==id);
   } else if(tipo==='area') {
-    const hasAt = DB.ativos.some(a=>a.area===id);
+    const hasAt = DB.ativos.some(a=>(a.area_id||a.area)===id);
     if(hasAt) { alert('Não é possível excluir: existem ativos nesta área.'); return; }
     DB.linhas = DB.linhas.filter(l=>l.area!==id);
     DB.areas  = DB.areas.filter(a=>a.id!==id);
