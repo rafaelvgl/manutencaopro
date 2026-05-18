@@ -484,22 +484,26 @@ function normalizeUsuarios(rows) {
 function normalizeAtivos(rows) {
   return rows.map(a => ({
     ...a,
-    // Compatibilidade: garante campos que o código usa
-    area:      a.area_id,
-    linha:     a.linha_id,
-    planta:    a.planta_id,
-    cc:        a.centro_custo,
-    serie:     a.numero_serie,
-    ano:       a.ano_fabricacao,
-    desc:      a.descricao,
-    horas:     a.horas_operacao || 0,
-    specs:     a.specs || {},
-    ultima_os: a.ultima_os,
-    proxima_prev: a.proxima_prev,
-    historico: [],
-    comentarios: [],
-    fotos: [],
-    anexos: [],
+    // Campos curtos para compatibilidade com código legado
+    area:         a.area_id,
+    linha:        a.linha_id,
+    planta:       a.planta_id,
+    cc:           a.centro_custo   || '',
+    serie:        a.numero_serie   || '',
+    ano:          a.ano_fabricacao || '',
+    desc:         a.descricao      || '',
+    horas:        a.horas_operacao || 0,
+    specs:        a.specs          || {},
+    status:       a.status         || 'operando',
+    criticidade:  a.criticidade    || 'C',
+    localizacao:  a.localizacao    || '',
+    ultima_os:    a.ultima_os      || null,
+    proxima_prev: a.proxima_prev   || null,
+    // Arrays locais (carregados sob demanda)
+    historico:    [],
+    comentarios:  [],
+    fotos:        [],
+    anexos:       [],
   }));
 }
 function normalizeOrdens(rows) {
@@ -684,10 +688,12 @@ function usarDadosDemo() {
 // Use a Claude API via proxy ou sua própria chave
 // Para usar: insira sua chave da Anthropic abaixo
 var IA_CFG = {
-  enabled: true,
-  apiKey: '',  // Insira: sk-ant-api03-... (deixe vazio para modo demo)
-  model: 'claude-sonnet-4-20250514',
-  maxTokens: 1024,
+  enabled:    true,
+  provider:   'gemini',        // 'gemini' | 'claude' | 'demo'
+  geminiKey:  '',              // AIza... (gratuito — aistudio.google.com)
+  claudeKey:  '',              // sk-ant-api03-... (pago)
+  model:      'gemini-2.0-flash',
+  maxTokens:  1024,
 };
 
 // ─── Contexto do sistema para o agente ───
@@ -733,32 +739,111 @@ var _iaHistory = [];
 async function iaChat(userMsg) {
   _iaHistory.push({ role:'user', content: userMsg });
 
-  if (!IA_CFG.apiKey) {
-    // Modo demo — resposta simulada baseada em contexto
+  // Sem chave configurada — modo demo
+  if (!IA_CFG.geminiKey && !IA_CFG.claudeKey) {
     return iaModoDemo(userMsg);
   }
 
+  // Usar Gemini (gratuito)
+  if (IA_CFG.geminiKey && IA_CFG.provider !== 'claude') {
+    return await iaChatGemini(userMsg);
+  }
+
+  // Usar Claude (Anthropic)
+  if (IA_CFG.claudeKey) {
+    return await iaChatClaude(userMsg);
+  }
+
+  return iaModoDemo(userMsg);
+}
+
+// ─── Gemini (Google — gratuito) ───
+async function iaChatGemini(userMsg) {
   try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'x-api-key': IA_CFG.apiKey,
-        'anthropic-version':'2023-06-01',
-      },
+    // Monta histórico no formato Gemini
+    var contents = [];
+
+    // System prompt como primeira mensagem do usuário
+    contents.push({
+      role: 'user',
+      parts: [{ text: buildSystemPrompt() + '\n\nEntendido. Estou pronto para ajudar com dados do sistema.' }]
+    });
+    contents.push({
+      role: 'model',
+      parts: [{ text: 'Entendido. Sou o assistente de manutenção. Pode perguntar.' }]
+    });
+
+    // Histórico recente (últimas 8 trocas)
+    var hist = _iaHistory.slice(-8);
+    for (var i = 0; i < hist.length - 1; i++) {
+      contents.push({
+        role: hist[i].role === 'user' ? 'user' : 'model',
+        parts: [{ text: hist[i].content }]
+      });
+    }
+
+    // Última mensagem (a atual)
+    contents.push({
+      role: 'user',
+      parts: [{ text: userMsg }]
+    });
+
+    var url = 'https://generativelanguage.googleapis.com/v1beta/models/' + IA_CFG.model + ':generateContent?key=' + IA_CFG.geminiKey;
+
+    var resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: IA_CFG.model,
-        max_tokens: IA_CFG.maxTokens,
-        system: buildSystemPrompt(),
-        messages: _iaHistory.slice(-10), // últimas 10 mensagens
+        contents: contents,
+        generationConfig: {
+          maxOutputTokens: IA_CFG.maxTokens,
+          temperature: 0.7,
+        }
       })
     });
-    const data = await resp.json();
-    const reply = data.content?.[0]?.text || 'Erro ao processar resposta.';
-    _iaHistory.push({ role:'assistant', content: reply });
+
+    var data = await resp.json();
+
+    if (data.error) {
+      console.error('Gemini error:', data.error);
+      if (data.error.code === 400) return '❌ Chave do Gemini inválida. Verifique em ⚙ Configurar IA.';
+      if (data.error.code === 429) return '⏳ Limite de requisições atingido. Aguarde 1 minuto e tente novamente.';
+      return '❌ Erro Gemini: ' + (data.error.message || JSON.stringify(data.error));
+    }
+
+    var reply = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Sem resposta do Gemini.';
+    _iaHistory.push({ role: 'assistant', content: reply });
+    return reply;
+
+  } catch(err) {
+    console.error('Gemini fetch error:', err);
+    return '❌ Erro de conexão com o Gemini: ' + err.message;
+  }
+}
+
+// ─── Claude (Anthropic) ───
+async function iaChatClaude(userMsg) {
+  try {
+    var resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': IA_CFG.claudeKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: IA_CFG.maxTokens,
+        system: buildSystemPrompt(),
+        messages: _iaHistory.slice(-10),
+      })
+    });
+    var data = await resp.json();
+    var reply = data.content?.[0]?.text || 'Erro ao processar resposta.';
+    _iaHistory.push({ role: 'assistant', content: reply });
     return reply;
   } catch(err) {
-    console.error('IA error:', err);
+    console.error('Claude error:', err);
     return iaModoDemo(userMsg);
   }
 }
@@ -932,18 +1017,71 @@ function initIAButton() {
 
 // ─── Configurar API Key ───
 function configIAKey() {
-  showModal('Configurar Chave da API Anthropic', `
-    <div style="background:var(--info-bg);border:1px solid var(--info);border-radius:var(--r);padding:12px 14px;margin-bottom:16px;font-size:13px">
-      <strong>Como obter:</strong> Acesse <a href="https://console.anthropic.com" target="_blank" style="color:var(--accent)">console.anthropic.com</a> → API Keys → Create Key
+  showModal('Configurar Assistente de IA', `
+    <div class="tabs-bar" style="margin-bottom:16px">
+      <div class="tab ${IA_CFG.provider!=='claude'?'on':''}" onclick="this.parentElement.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));this.classList.add('on');document.getElementById('ia-prov-gemini').style.display='';document.getElementById('ia-prov-claude').style.display='none'">🟢 Google Gemini (Grátis)</div>
+      <div class="tab ${IA_CFG.provider==='claude'?'on':''}" onclick="this.parentElement.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));this.classList.add('on');document.getElementById('ia-prov-gemini').style.display='none';document.getElementById('ia-prov-claude').style.display=''">🔵 Claude Anthropic (Pago)</div>
     </div>
-    <div class="fl"><label>Chave da API (sk-ant-api03-…)</label>
-      <input class="fi" id="ia-key-inp" type="password" placeholder="sk-ant-api03-..." value="${IA_CFG.apiKey}">
+
+    <div id="ia-prov-gemini" style="${IA_CFG.provider==='claude'?'display:none':''}">
+      <div style="background:var(--success-bg);border:1px solid var(--success);border-radius:var(--r);padding:12px 14px;margin-bottom:14px;font-size:13px">
+        ✅ <strong>Gratuito</strong> — 15 req/min, 1 milhão tokens/dia<br>
+        <strong>Como obter:</strong> Acesse <a href="https://aistudio.google.com" target="_blank" style="color:var(--accent)">aistudio.google.com</a> → Get API Key → Create API key
+      </div>
+      <div class="fl"><label>Chave do Gemini (AIza…)</label>
+        <input class="fi" id="ia-gemini-key" type="password" placeholder="AIzaSy..." value="${IA_CFG.geminiKey}">
+      </div>
+      <div class="fl"><label>Modelo</label>
+        <select class="fi" id="ia-gemini-model">
+          <option value="gemini-2.0-flash" ${IA_CFG.model==='gemini-2.0-flash'?'selected':''}>Gemini 2.0 Flash (rápido e gratuito) ⭐</option>
+          <option value="gemini-1.5-pro" ${IA_CFG.model==='gemini-1.5-pro'?'selected':''}>Gemini 1.5 Pro (mais capaz)</option>
+          <option value="gemini-1.5-flash" ${IA_CFG.model==='gemini-1.5-flash'?'selected':''}>Gemini 1.5 Flash (econômico)</option>
+        </select>
+      </div>
     </div>
-    <div style="font-size:12px;color:var(--text3);margin-top:8px">A chave é armazenada apenas nesta sessão. Recarregar a página apaga a configuração.</div>`,
+
+    <div id="ia-prov-claude" style="${IA_CFG.provider==='claude'?'':'display:none'}">
+      <div style="background:var(--info-bg);border:1px solid var(--info);border-radius:var(--r);padding:12px 14px;margin-bottom:14px;font-size:13px">
+        🔵 <strong>Pago</strong> — ~R$ 0,02 por consulta<br>
+        <strong>Como obter:</strong> Acesse <a href="https://console.anthropic.com" target="_blank" style="color:var(--accent)">console.anthropic.com</a> → API Keys → Create Key
+      </div>
+      <div class="fl"><label>Chave da API Claude (sk-ant-…)</label>
+        <input class="fi" id="ia-claude-key" type="password" placeholder="sk-ant-api03-..." value="${IA_CFG.claudeKey}">
+      </div>
+    </div>
+
+    <div style="font-size:11px;color:var(--text3);margin-top:8px">⚠ A chave é armazenada apenas nesta sessão do navegador e nunca enviada para outro servidor.</div>
+  `,
   async () => {
-    IA_CFG.apiKey = document.getElementById('ia-key-inp').value.trim();
-    closeModal();
-    showToast('Chave da API configurada. O assistente agora usa IA completa.','success');
+    var geminiKey = document.getElementById('ia-gemini-key')?.value.trim() || '';
+    var claudeKey = document.getElementById('ia-claude-key')?.value.trim() || '';
+    var geminiVisible = document.getElementById('ia-prov-gemini')?.style.display !== 'none';
+
+    if (geminiVisible && geminiKey) {
+      IA_CFG.geminiKey = geminiKey;
+      IA_CFG.provider  = 'gemini';
+      IA_CFG.model     = document.getElementById('ia-gemini-model')?.value || 'gemini-2.0-flash';
+      closeModal();
+      // Testar conexão
+      showToast('🔄 Testando conexão com Gemini…', 'info', 2000);
+      var teste = await iaChatGemini('Responda apenas: OK');
+      if (teste.startsWith('❌')) {
+        showToast(teste, 'error', 6000);
+      } else {
+        showToast('✅ Gemini conectado! Modelo: ' + IA_CFG.model, 'success', 4000);
+        _iaHistory = [];
+      }
+    } else if (!geminiVisible && claudeKey) {
+      IA_CFG.claudeKey = claudeKey;
+      IA_CFG.provider  = 'claude';
+      IA_CFG.model     = 'claude-sonnet-4-20250514';
+      closeModal();
+      showToast('✅ Claude configurado!', 'success', 3000);
+      _iaHistory = [];
+    } else {
+      alert('Cole a chave da API no campo correspondente.');
+      return false;
+    }
   });
 }
 
@@ -1892,7 +2030,7 @@ function buildTree() {
     </div>
     <div class="tree-children" id="ch-empresa">`;
 
-  DB.plantas.filter(p=>p.empresa_id===DB.empresa?.id||p.empresa===DB.empresa?.id||DB.plantas.length>0).forEach(pl=>{
+  DB.plantas.forEach(pl=>{
     const nPl = DB.ativos.filter(a=>(a.planta_id||a.planta)===pl.id).length;
     const plKey = 'pl-'+pl.id;
 
@@ -2544,30 +2682,70 @@ async function modalNovoAtivo() {
       <div class="fc fl"><label>Descrição</label><textarea class="fi" id="na-desc" rows="3"></textarea></div>
     </div>`,
   async ()=>{
-    const tag=document.getElementById('na-tag').value.trim();
-    const nome=document.getElementById('na-nome').value.trim();
+    const tag  = document.getElementById('na-tag').value.trim();
+    const nome = document.getElementById('na-nome').value.trim();
     if(!tag||!nome){alert('TAG e Nome são obrigatórios.');return false;}
-    const novo={
-      id:'AT-'+String(DB.ativos.length+1).padStart(3,'0'),
-      tag,nome,planta:'PL-001',
-      area:document.getElementById('na-area').value,linha:'',
-      tipo:document.getElementById('na-tipo').value,
-      fabricante:document.getElementById('na-fab').value,
-      modelo:document.getElementById('na-mod').value,
-      serie:document.getElementById('na-serie').value,
-      ano:document.getElementById('na-ano').value,
-      criticidade:document.getElementById('na-crit').value,
-      cc:document.getElementById('na-cc').value,
-      localizacao:document.getElementById('na-loc').value,
-      status:'operando',horas:0,
-      desc:document.getElementById('na-desc').value,
-      specs:{},ultima_os:null,proxima_prev:null,
-      comentarios:[],anexos:[],
-      historico:[{dt:new Date().toISOString().split('T')[0],tipo:'Cadastro',desc:`Ativo cadastrado por ${DB.currentUser.nome}`,os:null,user:DB.currentUser.nome}]
+
+    const areaId = document.getElementById('na-area').value;
+    const area   = DB.areas.find(a=>a.id===areaId)||{};
+    const linha  = DB.linhas.find(l=>(l.area_id||l.area)===areaId);
+
+    // Monta payload para o Supabase
+    const payload = {
+      tag, nome,
+      tipo:           document.getElementById('na-tipo').value,
+      fabricante:     document.getElementById('na-fab').value,
+      modelo:         document.getElementById('na-mod').value,
+      numero_serie:   document.getElementById('na-serie').value,
+      ano_fabricacao: parseInt(document.getElementById('na-ano').value)||null,
+      criticidade:    document.getElementById('na-crit').value,
+      centro_custo:   document.getElementById('na-cc').value,
+      localizacao:    document.getElementById('na-loc').value,
+      descricao:      document.getElementById('na-desc').value,
+      status:         'operando',
+      horas_operacao: 0,
+      specs:          {},
+      empresa_id:     DB.empresa?.id||null,
+      planta_id:      area.planta_id||area.planta||null,
+      area_id:        areaId||null,
+      linha_id:       linha?.id||null,
     };
-    DB.ativos.push(novo);
-    closeModal();
-    nav('ativo_detail', novo.id);
+
+    showLoading('Salvando ativo no Supabase…');
+    try {
+      const salvo = await SB.post('ativos', payload);
+      if(!salvo) throw new Error('Supabase retornou vazio');
+
+      // Adiciona histórico
+      await SB.post('ativos_historico', {
+        ativo_id:   salvo.id,
+        tipo:       'Cadastro',
+        descricao:  `Ativo cadastrado por ${DB.currentUser.nome}`,
+        usuario_id: DB.currentUser.id||null,
+      });
+
+      // Adiciona ao cache local normalizado
+      const novoLocal = {
+        ...salvo,
+        area: salvo.area_id, area_id: salvo.area_id,
+        linha: salvo.linha_id, linha_id: salvo.linha_id,
+        planta: salvo.planta_id, planta_id: salvo.planta_id,
+        cc: salvo.centro_custo, serie: salvo.numero_serie,
+        ano: salvo.ano_fabricacao, desc: salvo.descricao,
+        horas: salvo.horas_operacao||0, specs: salvo.specs||{},
+        historico:[], comentarios:[], fotos:[], anexos:[],
+      };
+      DB.ativos.push(novoLocal);
+
+      hideLoading();
+      closeModal();
+      showToast('Ativo ' + tag + ' salvo no banco de dados!', 'success');
+      nav('ativo_detail', salvo.id);
+    } catch(err) {
+      hideLoading();
+      console.error('Erro ao salvar ativo:', err);
+      showToast('Erro ao salvar no Supabase: ' + (err.message||err), 'error', 5000);
+    }
   });
 }
 
@@ -2591,18 +2769,43 @@ async function modalEditAtivo(id) {
       <div class="fc fl"><label>Descrição</label><textarea class="fi" id="ea-desc" rows="3">${a.desc}</textarea></div>
     </div>`,
   async ()=>{
-    a.tag         = document.getElementById('ea-tag').value.trim()||a.tag;
-    a.nome        = document.getElementById('ea-nome').value.trim()||a.nome;
-    a.fabricante  = document.getElementById('ea-fab').value;
-    a.modelo      = document.getElementById('ea-mod').value;
-    a.status      = document.getElementById('ea-status').value;
-    a.criticidade = document.getElementById('ea-crit').value;
-    a.proxima_prev= document.getElementById('ea-prev').value||null;
-    a.cc          = document.getElementById('ea-cc').value;
-    a.localizacao = document.getElementById('ea-loc').value;
-    a.desc        = document.getElementById('ea-desc').value;
-    a.historico.unshift({dt:new Date().toISOString().split('T')[0],tipo:'Edição',desc:`Dados editados por ${DB.currentUser.nome}`,os:null,user:DB.currentUser.nome});
-    closeModal(); pgAtivoDetail(id);
+    const tag  = document.getElementById('ea-tag').value.trim()||a.tag;
+    const nome = document.getElementById('ea-nome').value.trim()||a.nome;
+    const payload = {
+      tag, nome,
+      fabricante:     document.getElementById('ea-fab').value,
+      modelo:         document.getElementById('ea-mod').value,
+      status:         document.getElementById('ea-status').value,
+      criticidade:    document.getElementById('ea-crit').value,
+      proxima_prev:   document.getElementById('ea-prev').value||null,
+      centro_custo:   document.getElementById('ea-cc').value,
+      localizacao:    document.getElementById('ea-loc').value,
+      descricao:      document.getElementById('ea-desc').value,
+    };
+
+    showLoading('Salvando…');
+    try {
+      const salvo = await SB.patch('ativos', id, payload);
+      // Atualiza cache local
+      Object.assign(a, payload, {
+        cc: payload.centro_custo,
+        desc: payload.descricao,
+      });
+      // Salva histórico
+      await SB.post('ativos_historico', {
+        ativo_id:   id,
+        tipo:       'Edição',
+        descricao:  'Dados editados por ' + DB.currentUser.nome,
+        usuario_id: DB.currentUser.id||null,
+      });
+      hideLoading();
+      closeModal();
+      showToast('Ativo atualizado com sucesso!', 'success');
+      pgAtivoDetail(id);
+    } catch(err) {
+      hideLoading();
+      showToast('Erro ao salvar: ' + (err.message||err), 'error', 5000);
+    }
   });
 }
 
