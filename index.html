@@ -685,15 +685,14 @@ function usarDadosDemo() {
 
 
 // ─── Configuração IA ───
-// Use a Claude API via proxy ou sua própria chave
-// Para usar: insira sua chave da Anthropic abaixo
+// Migração aplicada: Google Gemini / Anthropic -> Groq (OpenAI-compatible)
 var IA_CFG = {
   enabled:    true,
-  provider:   'gemini',        // 'gemini' | 'claude' | 'demo'
-  geminiKey:  '',              // AIza... (gratuito — aistudio.google.com)
-  claudeKey:  '',              // sk-ant-api03-... (pago)
-  model:      'gemini-2.0-flash',
+  provider:   'groq',          // 'groq' | 'demo'
+  groqKey:    '',              // gsk_... / chave do Groq Console
+  model:      'llama-3.3-70b-versatile',
   maxTokens:  1024,
+  baseUrl:    'https://api.groq.com/openai/v1'
 };
 
 // ─── Contexto do sistema para o agente ───
@@ -739,137 +738,65 @@ var _iaHistory = [];
 async function iaChat(userMsg) {
   _iaHistory.push({ role:'user', content: userMsg });
 
-  // Sem chave configurada — modo demo
-  if (!IA_CFG.geminiKey && !IA_CFG.claudeKey) {
+  if (!IA_CFG.groqKey || IA_CFG.provider !== 'groq') {
     return iaModoDemo(userMsg);
   }
 
-  // Usar Gemini (gratuito)
-  if (IA_CFG.geminiKey && IA_CFG.provider !== 'claude') {
-    return await iaChatGemini(userMsg);
-  }
-
-  // Usar Claude (Anthropic)
-  if (IA_CFG.claudeKey) {
-    return await iaChatClaude(userMsg);
-  }
-
-  return iaModoDemo(userMsg);
+  return await iaChatGroq(userMsg);
 }
 
-// ─── Gemini (Google — gratuito) ───
-async function iaChatGemini(userMsg) {
+// ─── Groq (OpenAI-compatible) ───
+async function iaChatGroq(userMsg) {
   try {
-    var contents = [];
-
-    // System prompt injetado como instrução de sistema (systemInstruction)
-    // e histórico no formato correto do Gemini
-    var hist = _iaHistory.slice(-8);
-    for (var i = 0; i < hist.length - 1; i++) {
-      var h = hist[i];
-      contents.push({
-        role: h.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: String(h.content || '') }]
-      });
-    }
-
-    // Mensagem atual do usuário
-    contents.push({
-      role: 'user',
-      parts: [{ text: String(userMsg || '') }]
+    var hist = _iaHistory.slice(-10).map(function(h){
+      return { role: h.role, content: String(h.content || '') };
     });
 
-    var url = 'https://generativelanguage.googleapis.com/v1beta/models/'
-      + IA_CFG.model + ':generateContent?key=' + IA_CFG.geminiKey;
+    var messages = [{ role: 'system', content: buildSystemPrompt() }].concat(hist);
 
     var payload = {
-      systemInstruction: {
-        parts: [{ text: buildSystemPrompt() }]
-      },
-      contents: contents,
-      generationConfig: {
-        maxOutputTokens: IA_CFG.maxTokens,
-        temperature: 0.7,
-      }
+      model: IA_CFG.model || 'llama-3.3-70b-versatile',
+      messages: messages,
+      max_tokens: IA_CFG.maxTokens || 1024,
+      temperature: 0.7
     };
 
-    var resp = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-
-    // Verificar HTTP status antes de parsear JSON
-    if (!resp.ok) {
-      var errTxt = await resp.text();
-      console.error('Gemini HTTP ' + resp.status + ':', errTxt);
-
-      // Mostrar erro real, não genérico
-      try {
-        var errJson = JSON.parse(errTxt);
-        var msg = errJson.error?.message || errTxt;
-        return '❌ Gemini erro ' + resp.status + ': ' + msg;
-      } catch(_) {
-        return '❌ Gemini erro ' + resp.status + ': ' + errTxt.slice(0, 200);
-      }
-    }
-
-    var data = await resp.json();
-
-    // Verificar se retornou candidatos válidos
-    if (!data.candidates || !data.candidates.length) {
-      console.error('Gemini sem candidatos:', JSON.stringify(data));
-      // Pode ter sido bloqueado por safety filters
-      if (data.promptFeedback?.blockReason) {
-        return '⚠ Resposta bloqueada pelo filtro de segurança do Gemini: ' + data.promptFeedback.blockReason;
-      }
-      return '⚠ Gemini não retornou resposta. Tente reformular a pergunta.';
-    }
-
-    var reply = data.candidates[0]?.content?.parts?.[0]?.text || '';
-    if (!reply) {
-      // Finish reason pode indicar o problema
-      var reason = data.candidates[0]?.finishReason || 'desconhecido';
-      return '⚠ Resposta vazia do Gemini (motivo: ' + reason + '). Tente novamente.';
-    }
-
-    _iaHistory.push({ role: 'assistant', content: reply });
-    return reply;
-
-  } catch(err) {
-    console.error('Gemini fetch error:', err);
-    // Erro de rede / CORS
-    if (err.message && err.message.includes('fetch')) {
-      return '❌ Erro de rede ao conectar ao Gemini. Verifique sua conexão com a internet.';
-    }
-    return '❌ Erro inesperado: ' + (err.message || String(err));
-  }
-}
-
-// ─── Claude (Anthropic) ───
-async function iaChatClaude(userMsg) {
-  try {
-    var resp = await fetch('https://api.anthropic.com/v1/messages', {
+    var resp = await fetch((IA_CFG.baseUrl || 'https://api.groq.com/openai/v1') + '/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': IA_CFG.claudeKey,
-        'anthropic-version': '2023-06-01',
+        'Authorization': 'Bearer ' + IA_CFG.groqKey
       },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: IA_CFG.maxTokens,
-        system: buildSystemPrompt(),
-        messages: _iaHistory.slice(-10),
-      })
+      body: JSON.stringify(payload)
     });
+
+    if (!resp.ok) {
+      var errTxt = await resp.text();
+      console.error('Groq HTTP ' + resp.status + ':', errTxt);
+      try {
+        var errJson = JSON.parse(errTxt);
+        var msg = errJson.error?.message || errTxt;
+        return '❌ Groq erro ' + resp.status + ': ' + msg;
+      } catch(_) {
+        return '❌ Groq erro ' + resp.status + ': ' + errTxt.slice(0, 200);
+      }
+    }
+
     var data = await resp.json();
-    var reply = data.content?.[0]?.text || 'Erro ao processar resposta.';
+    var reply = data?.choices?.[0]?.message?.content || data?.choices?.[0]?.text || '';
+
+    if (!reply) {
+      return '⚠ Groq não retornou resposta. Verifique o modelo configurado e tente novamente.';
+    }
+
     _iaHistory.push({ role: 'assistant', content: reply });
     return reply;
   } catch(err) {
-    console.error('Claude error:', err);
-    return iaModoDemo(userMsg);
+    console.error('Groq fetch error:', err);
+    if (err.message && err.message.toLowerCase().includes('fetch')) {
+      return '❌ Erro de rede ao conectar ao Groq. Se houver bloqueio de CORS no navegador, use um proxy/backend para a chamada.';
+    }
+    return '❌ Erro inesperado no Groq: ' + (err.message || String(err));
   }
 }
 
@@ -919,10 +846,10 @@ function iaModoDemo(msg) {
     reply = `Olá, **${DB.currentUser?.nome||'gestor'}**! Aqui está o resumo operacional de agora:\n\n• **${osAbertas}** OS abertas ou em execução${criticas?`\n• ⚠ **${criticas} OS crítica(s)** requer atenção imediata`:''}\n• **${DB.ativos.filter(a=>a.status==='manutencao'||a.status==='parado').length}** ativo(s) fora de operação\n\nPosso ajudá-lo a analisar OS, ativos, indicadores ou qualquer dado do sistema. O que precisa?`;
 
   } else if (m.includes('ajuda') || m.includes('help') || m.includes('o que você') || m.includes('o que voce')) {
-    reply = `Posso ajudá-lo com:\n\n• **OS abertas, críticas ou vencidas** — "Quais OS estão abertas?"\n• **Ativos com falha ou parados** — "Quais ativos estão em manutenção?"\n• **Preventivas vencendo** — "Quais preventivas vencem esse mês?"\n• **Indicadores KPI** — "Qual a disponibilidade atual?"\n• **Custos** — "Quanto gastamos em manutenção?"\n• **Histórico e análise** — "Quais falhas ocorreram na área de Caldeiraria?"\n\nConfigure a chave da API Anthropic nas configurações do sistema para respostas com IA completa.`;
+    reply = `Posso ajudá-lo com:\n\n• **OS abertas, críticas ou vencidas** — "Quais OS estão abertas?"\n• **Ativos com falha ou parados** — "Quais ativos estão em manutenção?"\n• **Preventivas vencendo** — "Quais preventivas vencem esse mês?"\n• **Indicadores KPI** — "Qual a disponibilidade atual?"\n• **Custos** — "Quanto gastamos em manutenção?"\n• **Histórico e análise** — "Quais falhas ocorreram na área de Caldeiraria?"\n\nConfigure a chave da API Groq nas configurações do sistema para respostas com IA completa.`;
 
   } else {
-    reply = `Entendi sua pergunta sobre **"${msg}"**. \n\nPara uma análise completa com acesso a todos os dados históricos e insights preditivos, configure a chave da API Anthropic no sistema. \n\nNo momento posso ajudar com: status de OS, ativos com falha, preventivas vencendo, indicadores KPI e custos. Tente perguntar especificamente sobre um desses tópicos.`;
+    reply = `Entendi sua pergunta sobre **"${msg}"**. \n\nPara uma análise completa com acesso a todos os dados históricos e insights preditivos, configure a chave da API Groq no sistema. \n\nNo momento posso ajudar com: status de OS, ativos com falha, preventivas vencendo, indicadores KPI e custos. Tente perguntar especificamente sobre um desses tópicos.`;
   }
 
   _iaHistory.push({ role:'assistant', content: reply });
@@ -958,7 +885,7 @@ function toggleIAChat() {
     <div id="ia-msgs" style="flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px">
       <div class="ia-msg-bot" style="background:var(--bg3);border-radius:var(--r);padding:10px 13px;font-size:13px;line-height:1.6;border-left:3px solid var(--accent)">
         Olá! Sou o assistente de manutenção com acesso aos dados do sistema. Pergunte sobre OS, ativos, indicadores, preventivas ou qualquer dado operacional.
-        ${!IA_CFG.apiKey?'<br><br><small style="color:var(--text3)">⚙ Configure a chave da API Anthropic para IA completa.</small>':''}
+        ${!IA_CFG.groqKey?'<br><br><small style="color:var(--text3)">⚙ Configure a chave da API Groq para IA completa.</small>':''}
       </div>
     </div>
     <div style="padding:12px;border-top:1px solid var(--border);display:flex;gap:8px;flex-shrink:0">
@@ -1043,73 +970,48 @@ function initIAButton() {
 // ─── Configurar API Key ───
 function configIAKey() {
   showModal('Configurar Assistente de IA', `
-    <div class="tabs-bar" style="margin-bottom:16px">
-      <div class="tab ${IA_CFG.provider!=='claude'?'on':''}" onclick="this.parentElement.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));this.classList.add('on');document.getElementById('ia-prov-gemini').style.display='';document.getElementById('ia-prov-claude').style.display='none'">🟢 Google Gemini (Grátis)</div>
-      <div class="tab ${IA_CFG.provider==='claude'?'on':''}" onclick="this.parentElement.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));this.classList.add('on');document.getElementById('ia-prov-gemini').style.display='none';document.getElementById('ia-prov-claude').style.display=''">🔵 Claude Anthropic (Pago)</div>
+    <div style="background:var(--info-bg);border:1px solid var(--info);border-radius:var(--r);padding:12px 14px;margin-bottom:14px;font-size:13px">
+      ⚡ <strong>Groq</strong> — API compatível com OpenAI e baixa latência.<br>
+      <strong>Como obter:</strong> Acesse <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer" style="color:var(--accent)">console.groq.com/keys</a> → Create API Key
     </div>
 
-    <div id="ia-prov-gemini" style="${IA_CFG.provider==='claude'?'display:none':''}">
-      <div style="background:var(--success-bg);border:1px solid var(--success);border-radius:var(--r);padding:12px 14px;margin-bottom:14px;font-size:13px">
-        ✅ <strong>Gratuito</strong> — 15 req/min, 1 milhão tokens/dia<br>
-        <strong>Como obter:</strong> Acesse <a href="https://aistudio.google.com" target="_blank" style="color:var(--accent)">aistudio.google.com</a> → Get API Key → Create API key
-      </div>
-      <div class="fl"><label>Chave do Gemini (AIza…)</label>
-        <input class="fi" id="ia-gemini-key" type="password" placeholder="AIzaSy..." value="${IA_CFG.geminiKey}">
-      </div>
-      <div class="fl"><label>Modelo</label>
-        <select class="fi" id="ia-gemini-model">
-          <option value="gemini-2.0-flash" ${IA_CFG.model==='gemini-2.0-flash'?'selected':''}>Gemini 2.0 Flash (rápido e gratuito) ⭐</option>
-          <option value="gemini-1.5-pro" ${IA_CFG.model==='gemini-1.5-pro'?'selected':''}>Gemini 1.5 Pro (mais capaz)</option>
-          <option value="gemini-1.5-flash" ${IA_CFG.model==='gemini-1.5-flash'?'selected':''}>Gemini 1.5 Flash (econômico)</option>
-        </select>
-      </div>
+    <div class="fl"><label>Chave da API Groq</label>
+      <input class="fi" id="ia-groq-key" type="password" placeholder="gsk_..." value="${IA_CFG.groqKey || ''}">
     </div>
 
-    <div id="ia-prov-claude" style="${IA_CFG.provider==='claude'?'':'display:none'}">
-      <div style="background:var(--info-bg);border:1px solid var(--info);border-radius:var(--r);padding:12px 14px;margin-bottom:14px;font-size:13px">
-        🔵 <strong>Pago</strong> — ~R$ 0,02 por consulta<br>
-        <strong>Como obter:</strong> Acesse <a href="https://console.anthropic.com" target="_blank" style="color:var(--accent)">console.anthropic.com</a> → API Keys → Create Key
-      </div>
-      <div class="fl"><label>Chave da API Claude (sk-ant-…)</label>
-        <input class="fi" id="ia-claude-key" type="password" placeholder="sk-ant-api03-..." value="${IA_CFG.claudeKey}">
-      </div>
+    <div class="fl"><label>Modelo</label>
+      <select class="fi" id="ia-groq-model">
+        <option value="llama-3.3-70b-versatile" ${(IA_CFG.model||'')==='llama-3.3-70b-versatile'?'selected':''}>llama-3.3-70b-versatile</option>
+        <option value="llama-3.1-8b-instant" ${(IA_CFG.model||'')==='llama-3.1-8b-instant'?'selected':''}>llama-3.1-8b-instant</option>
+        <option value="openai/gpt-oss-20b" ${(IA_CFG.model||'')==='openai/gpt-oss-20b'?'selected':''}>openai/gpt-oss-20b</option>
+        <option value="openai/gpt-oss-120b" ${(IA_CFG.model||'')==='openai/gpt-oss-120b'?'selected':''}>openai/gpt-oss-120b</option>
+      </select>
     </div>
 
-    <div style="font-size:11px;color:var(--text3);margin-top:8px">⚠ A chave é armazenada apenas nesta sessão do navegador e nunca enviada para outro servidor.</div>
+    <div style="font-size:11px;color:var(--text3);margin-top:8px">⚠ A chave é armazenada apenas nesta sessão do navegador. Se o navegador bloquear CORS, mova a chamada da IA para um backend/proxy.</div>
   `,
   async () => {
-    var geminiKey = document.getElementById('ia-gemini-key')?.value.trim() || '';
-    var claudeKey = document.getElementById('ia-claude-key')?.value.trim() || '';
-    var geminiVisible = document.getElementById('ia-prov-gemini')?.style.display !== 'none';
-
-    if (geminiVisible && geminiKey) {
-      IA_CFG.geminiKey = geminiKey;
-      IA_CFG.provider  = 'gemini';
-      IA_CFG.model     = document.getElementById('ia-gemini-model')?.value || 'gemini-2.0-flash';
-      closeModal();
-      // Testar conexão
-      showToast('🔄 Testando conexão com Gemini…', 'info', 2000);
-      var teste = await iaChatGemini('Responda apenas: OK');
-      if (teste.startsWith('❌')) {
-        showToast(teste, 'error', 6000);
-      } else {
-        showToast('✅ Gemini conectado! Modelo: ' + IA_CFG.model, 'success', 4000);
-        _iaHistory = [];
-      }
-    } else if (!geminiVisible && claudeKey) {
-      IA_CFG.claudeKey = claudeKey;
-      IA_CFG.provider  = 'claude';
-      IA_CFG.model     = 'claude-sonnet-4-20250514';
-      closeModal();
-      showToast('✅ Claude configurado!', 'success', 3000);
-      _iaHistory = [];
-    } else {
-      alert('Cole a chave da API no campo correspondente.');
+    var groqKey = document.getElementById('ia-groq-key')?.value.trim() || '';
+    if (!groqKey) {
+      alert('Cole a chave da API Groq no campo correspondente.');
       return false;
+    }
+
+    IA_CFG.groqKey = groqKey;
+    IA_CFG.provider = 'groq';
+    IA_CFG.model = document.getElementById('ia-groq-model')?.value || 'llama-3.3-70b-versatile';
+    closeModal();
+
+    showToast('🔄 Testando conexão com Groq…', 'info', 2000);
+    var teste = await iaChatGroq('Responda apenas: OK');
+    if (String(teste).startsWith('❌') || String(teste).startsWith('⚠')) {
+      showToast(teste, 'error', 7000);
+    } else {
+      showToast('✅ Groq conectado! Modelo: ' + IA_CFG.model, 'success', 4000);
+      _iaHistory = [];
     }
   });
 }
-
 
 // ════════════════════════════════════════════════════
 // UTILITÁRIOS
