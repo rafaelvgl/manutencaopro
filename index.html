@@ -760,64 +760,89 @@ async function iaChat(userMsg) {
 // ─── Gemini (Google — gratuito) ───
 async function iaChatGemini(userMsg) {
   try {
-    // Monta histórico no formato Gemini
     var contents = [];
 
-    // System prompt como primeira mensagem do usuário
-    contents.push({
-      role: 'user',
-      parts: [{ text: buildSystemPrompt() + '\n\nEntendido. Estou pronto para ajudar com dados do sistema.' }]
-    });
-    contents.push({
-      role: 'model',
-      parts: [{ text: 'Entendido. Sou o assistente de manutenção. Pode perguntar.' }]
-    });
-
-    // Histórico recente (últimas 8 trocas)
+    // System prompt injetado como instrução de sistema (systemInstruction)
+    // e histórico no formato correto do Gemini
     var hist = _iaHistory.slice(-8);
     for (var i = 0; i < hist.length - 1; i++) {
+      var h = hist[i];
       contents.push({
-        role: hist[i].role === 'user' ? 'user' : 'model',
-        parts: [{ text: hist[i].content }]
+        role: h.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: String(h.content || '') }]
       });
     }
 
-    // Última mensagem (a atual)
+    // Mensagem atual do usuário
     contents.push({
       role: 'user',
-      parts: [{ text: userMsg }]
+      parts: [{ text: String(userMsg || '') }]
     });
 
-    var url = 'https://generativelanguage.googleapis.com/v1beta/models/' + IA_CFG.model + ':generateContent?key=' + IA_CFG.geminiKey;
+    var url = 'https://generativelanguage.googleapis.com/v1beta/models/'
+      + IA_CFG.model + ':generateContent?key=' + IA_CFG.geminiKey;
+
+    var payload = {
+      systemInstruction: {
+        parts: [{ text: buildSystemPrompt() }]
+      },
+      contents: contents,
+      generationConfig: {
+        maxOutputTokens: IA_CFG.maxTokens,
+        temperature: 0.7,
+      }
+    };
 
     var resp = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: contents,
-        generationConfig: {
-          maxOutputTokens: IA_CFG.maxTokens,
-          temperature: 0.7,
-        }
-      })
+      body: JSON.stringify(payload)
     });
+
+    // Verificar HTTP status antes de parsear JSON
+    if (!resp.ok) {
+      var errTxt = await resp.text();
+      console.error('Gemini HTTP ' + resp.status + ':', errTxt);
+
+      // Mostrar erro real, não genérico
+      try {
+        var errJson = JSON.parse(errTxt);
+        var msg = errJson.error?.message || errTxt;
+        return '❌ Gemini erro ' + resp.status + ': ' + msg;
+      } catch(_) {
+        return '❌ Gemini erro ' + resp.status + ': ' + errTxt.slice(0, 200);
+      }
+    }
 
     var data = await resp.json();
 
-    if (data.error) {
-      console.error('Gemini error:', data.error);
-      if (data.error.code === 400) return '❌ Chave do Gemini inválida. Verifique em ⚙ Configurar IA.';
-      if (data.error.code === 429) return '⏳ Limite de requisições atingido. Aguarde 1 minuto e tente novamente.';
-      return '❌ Erro Gemini: ' + (data.error.message || JSON.stringify(data.error));
+    // Verificar se retornou candidatos válidos
+    if (!data.candidates || !data.candidates.length) {
+      console.error('Gemini sem candidatos:', JSON.stringify(data));
+      // Pode ter sido bloqueado por safety filters
+      if (data.promptFeedback?.blockReason) {
+        return '⚠ Resposta bloqueada pelo filtro de segurança do Gemini: ' + data.promptFeedback.blockReason;
+      }
+      return '⚠ Gemini não retornou resposta. Tente reformular a pergunta.';
     }
 
-    var reply = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Sem resposta do Gemini.';
+    var reply = data.candidates[0]?.content?.parts?.[0]?.text || '';
+    if (!reply) {
+      // Finish reason pode indicar o problema
+      var reason = data.candidates[0]?.finishReason || 'desconhecido';
+      return '⚠ Resposta vazia do Gemini (motivo: ' + reason + '). Tente novamente.';
+    }
+
     _iaHistory.push({ role: 'assistant', content: reply });
     return reply;
 
   } catch(err) {
     console.error('Gemini fetch error:', err);
-    return '❌ Erro de conexão com o Gemini: ' + err.message;
+    // Erro de rede / CORS
+    if (err.message && err.message.includes('fetch')) {
+      return '❌ Erro de rede ao conectar ao Gemini. Verifique sua conexão com a internet.';
+    }
+    return '❌ Erro inesperado: ' + (err.message || String(err));
   }
 }
 
